@@ -18,9 +18,8 @@ from keras.callbacks import ModelCheckpoint
 matplotlib.use('Agg')
 current_directory = os.path.dirname(os.path.abspath(__file__))
 parser = argparse.ArgumentParser()
-parser.add_argument('dataset_root')
-parser.add_argument('classes')
-parser.add_argument('result_root')
+parser.add_argument('--data', type=str)
+parser.add_argument('--output', type=str, default="output")
 parser.add_argument('--epochs_pre', type=int, default=5)
 parser.add_argument('--epochs_fine', type=int, default=50)
 parser.add_argument('--batch_size_pre', type=int, default=32)
@@ -59,20 +58,18 @@ def main(args):
     # ====================================================
     # parameters
     epochs = args.epochs_pre + args.epochs_fine
-    args.dataset_root = os.path.expanduser(args.dataset_root)
-    args.result_root = os.path.expanduser(args.result_root)
-    args.classes = os.path.expanduser(args.classes)
+    args.data = os.path.expanduser(args.data)
+    args.result_root = os.path.expanduser(args.output)
 
     # load class names
-    with open(args.classes, 'r') as f:
-        classes = f.readlines()
-        classes = list(map(lambda x: x.strip(), classes))
+
+    classes = os.listdir(args.data)
     num_classes = len(classes)
 
     # make input_paths and labels
     input_paths, labels = [], []
-    for class_name in os.listdir(args.dataset_root):
-        class_root = os.path.join(args.dataset_root, class_name)
+    for class_name in os.listdir(args.data):
+        class_root = os.path.join(args.data, class_name)
         class_id = classes.index(class_name)
         for path in os.listdir(class_root):
             path = os.path.join(class_root, path)
@@ -103,8 +100,8 @@ def main(args):
     print("Validation on %d images and labels" % (len(val_input_paths)))
 
     # create a directory where results will be saved (if necessary)
-    if os.path.exists(args.result_root) is False:
-        os.makedirs(args.result_root)
+    if os.path.exists(args.output) is False:
+        os.makedirs(args.output)
 
     # ====================================================
     # Build a custom Xception
@@ -159,13 +156,13 @@ def main(args):
         callbacks=[
             ModelCheckpoint(
                 filepath=os.path.join(
-                    args.result_root,
+                    args.output,
                     'model_pre_ep{epoch}_valloss{val_loss:.3f}.h5'),
                 period=args.snapshot_period_pre,
             ),
         ],
     )
-    model.save(os.path.join(args.result_root, 'model_pre_final.h5'))
+    model.save(os.path.join(args.output, 'model_pre_final.h5'))
 
     # ====================================================
     # Train the whole model
@@ -201,13 +198,13 @@ def main(args):
         callbacks=[
             ModelCheckpoint(
                 filepath=os.path.join(
-                    args.result_root,
+                    args.output,
                     'model_fine_ep{epoch}_valloss{val_loss:.3f}.h5'),
                 period=args.snapshot_period_fine,
             ),
         ],
     )
-    model.save(os.path.join(args.result_root, 'model_fine_final.h5'))
+    model.save(os.path.join(args.output, 'model_fine_final.h5'))
 
     # ====================================================
     # Create & save result graphs
@@ -229,7 +226,7 @@ def main(args):
     plt.grid()
     plt.xlabel('epoch')
     plt.ylabel('accuracy')
-    plt.savefig(os.path.join(args.result_root, 'accuracy.png'))
+    plt.savefig(os.path.join(args.output, 'accuracy.png'))
     plt.clf()
 
     plt.plot(range(epochs), loss, marker='.', label='loss')
@@ -238,7 +235,7 @@ def main(args):
     plt.grid()
     plt.xlabel('epoch')
     plt.ylabel('loss')
-    plt.savefig(os.path.join(args.result_root, 'loss.png'))
+    plt.savefig(os.path.join(args.output, 'loss.png'))
     plt.clf()
 
     # save plot data as pickle file
@@ -248,7 +245,7 @@ def main(args):
         'loss': loss,
         'val_loss': val_loss,
     }
-    with open(os.path.join(args.result_root, 'plot.dump'), 'wb') as f:
+    with open(os.path.join(args.output, 'plot.dump'), 'wb') as f:
         pkl.dump(plot, f)
 
 
